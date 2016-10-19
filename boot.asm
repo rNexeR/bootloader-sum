@@ -18,13 +18,12 @@ start:
 
 	msg1     db      'N1: ', 0
 	msg2     db      'N2: ', 0 
-	msg3     db      'Sum: ', 0
+	msg3     db      'R: ', 0
 	input1 resb 5
 	input2 resb 5
-	sum resb 5
 
-	ent1 resb 4
-	ent2 resb 4
+	ent1 resb 2
+	ent2 resb 2
 	result resb 4
 
 os_get_cursor_pos:
@@ -190,29 +189,30 @@ atoi:
 		ret
 
 itoa:
-	;ax -> mem address that contain the integer
+	;ax -> integer to convert
 	;bx -> mem address to store the string
 
 	push bp
 	mov bp, sp
-	sub sp, 8
+	sub sp, 10
 
-	mov bx, ax
-	mov ax, [bx]
+	mov word[bp-6], bx ; mem address to store
 
-	mov [bp-2], ax ; mem address
+	mov [bp-2], ax ; integer
 	mov word[bp-4], 0 ; max
-	mov [bp-6], bx ; mem address to store
 	mov word[bp-8], 0 ; iterator
+	mov word[bp-10], 0 ; max original
 
 	while_less_than:
+
 		mov ax, 10 ;base
-		mov bx, [bp-4] ; potencia
+		mov bx, word[bp-4] ; potencia
 		call pow
-		mov bx, [bp-2]
-		cmp ax, [bx]
+		cmp ax, word[bp-2]
 		jg .continue
+
 		inc word[bp-4]
+		inc word[bp-10]
 		jmp while_less_than
 
 	.continue:
@@ -221,8 +221,11 @@ itoa:
 	
 	while_store:
 
-		cmp word[bp-4], 0
-		jl .salir
+		mov ax, word[bp-8] ; iterator
+		mov bx, word[bp-10] ; max original
+
+		cmp ax, bx
+		je .salir
 
 		mov ax, 10
 		mov bx, [bp-4]
@@ -230,14 +233,17 @@ itoa:
 
 		mov bx, ax
 		mov ax, [bp-2]
+		mov dx, 0
 		div bx
 
 		mov [bp-2], dx
 
 		add ax, 48
+
 		mov bx, [bp-6]
 		add bx, [bp-8]
-		mov [bx], ax
+		mov byte[bx], al
+
 		inc word[bp-8]
 		dec word[bp-4]
 		jmp while_store
@@ -262,38 +268,19 @@ suma:
 
     mov ax, input1
     call atoi
+    mov word[ent1], ax ; ent1 = n1
 
-    mov [ent1], ax
-    mov ax, ent1
-    mov bx, input1
-    call itoa
-
-    mov si, input1
-    call print_string
-
-
-	;mov si, input1
-	;call print_string
-	;mov ah,0eh  ;Display a character in AL
-	;int 10h     ;aka, echo int
-    ;mov di, input1
-    ;call os_input_string
-
-    ;print Number2
-    call reset_cursor
+    ;print N2
     mov si, msg2
     call print_string
 
     ;get n2
     mov ax, input2
     call get_input_string
-	;mov si, input2
-	;call print_string
-	;mov ah,0eh  ;Display a character in AL
-	;int 10h     ;aka, echo int
-	
-    ;mov di, input2
-    ;call os_input_string
+
+    mov ax, input2
+    call atoi
+    mov word[ent2], ax
 
     ;print Sum
     call reset_cursor
@@ -301,23 +288,16 @@ suma:
     call print_string
 
     ;sum
-    mov ax, [input1]
-    sub ax, 48
-    mov bx, [input2]
-    sub bx, 48
-    add ax, bx
-    add ax, 48
-    mov [sum], ax
+    mov ax, word[ent1]
+    add ax, word[ent2]
+    mov bx, result
+    call itoa
 
     ;print the result
-    mov si, sum
+    mov si, result
     call print_string
 
     call reset_cursor
-
-    mov ax, [sum]
-    cmp ax, 48
-    jnz suma
 
     ret
 
@@ -338,6 +318,3 @@ print_string:			; Routine: output string in SI to screen
 
 	times 510-($-$$) db 0	; Pad remainder of boot sector with 0s
 	dw 0xAA55		; The standard PC boot signature
-
-
-	;%include 'input.asm'
